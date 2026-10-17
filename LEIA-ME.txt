@@ -1,0 +1,50 @@
+TEMA 5 — POLÍTICAS DE ESCRITA EM MEMÓRIA CACHE
+
+ESTRUTURA DO PROJETO
+main.py                 Ponto de entrada; coordena testes e relatórios.
+cache_sim/config.py     Parâmetros da cache e da simulação.
+cache_sim/trace.py      Gera uma sequência reproduzível de leituras e escritas.
+cache_sim/cache.py      Implementa cache set-associative, LRU, WT, WB e tráfego.
+cache_sim/report.py     Apresenta comparação e análise de localidade no terminal.
+cache_sim/coherence.py  Demonstra incoerência SMP e snooping simplificado.
+cache_sim/tests.py      Testa políticas, alocação, tráfego, substituição e coerência.
+
+COMO EXECUTAR NO WINDOWS
+1. Extraia o ZIP inteiro para uma pasta.
+2. Abra o PowerShell na pasta onde está main.py.
+3. Execute: py main.py
+
+REQUISITOS
+Python 3.10 ou superior. Não são necessárias bibliotecas externas.
+
+O QUE O PROGRAMA FAZ
+- Simula 1.000 acessos, exatamente 300 escritas e 700 leituras.
+- Compara Write-through + no-write-allocate com Write-back + write-allocate.
+- Calcula leituras de linhas, escritas de palavras, write-backs por substituição
+  e gravações das linhas sujas restantes no flush final.
+- Compara quatro padrões de localidade usando traces reproduzíveis.
+- Demonstra uma incoerência SMP e uma correção didática com snooping.
+- Executa testes automáticos antes de apresentar os resultados.
+- Valida parâmetros e endereços inválidos para evitar resultados silenciosamente incorretos.
+
+HIPÓTESES DO MODELO
+Cache de 2 KiB, linhas de 32 bytes, 4 vias, 16 conjuntos, LRU e palavras de
+4 bytes. Os endereços são alinhados a palavra. O tráfego representa bytes
+transferidos no modelo didático, não latência ou custo real de hardware.
+
+A comparação usa duas combinações comuns: WT + no-write-allocate e WB +
+write-allocate. Portanto, não isola apenas a política de escrita; também compara
+as políticas de alocação em caso de falha de escrita. Os acertos e as falhas são
+contados por operação, incluindo leituras e escritas.
+
+O exemplo SMP é ilustrativo. O snooping simplificado mostra invalidação e
+fornecimento de dado atualizado, mas não implementa todos os estados e regras
+de um protocolo real como MESI.
+
+VALIDAÇÃO DESTA VERSÃO
+Além dos testes executados automaticamente por main.py, esta versão foi
+verificada com compilação sintática e testes de estresse: 100 sequências de
+2.000 operações para cada política (200 sequências no total), conferindo os
+valores lidos e o conteúdo final da memória. Todos esses testes passaram.
+Isso valida os cenários cobertos, mas não transforma o modelo didático em uma
+simulação completa de um processador ou de um protocolo real de coerência.
