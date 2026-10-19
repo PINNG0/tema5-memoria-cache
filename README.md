@@ -1,31 +1,76 @@
+<div align="center">
+
 # 🧠 Simulador de Políticas de Escrita em Memória Cache
 
-<p align="center">
-  <strong>Write-through × Write-back</strong><br>
-  Simulação, análise de tráfego no barramento e demonstração didática de coerência de cache em SMP.
-</p>
+### **Write-through × Write-back**
+
+**O que muda no tráfego de memória quando a política de escrita muda?**
+
+Simulação em Python · Análise de resultados · Localidade · Coerência de cache em SMP
+
+<br>
+
+**UNIR · Arquitetura de Computadores · 2026/2**
+
+</div>
 
 ---
 
-## 📌 Sobre o projeto
+## 💡 Sobre o projeto
 
-Este projeto implementa, em **Python**, um simulador didático para estudar e comparar duas políticas de escrita utilizadas em memória cache:
+Este projeto apresenta um simulador didático desenvolvido em **Python** para comparar duas políticas de escrita utilizadas em memória cache: **Write-through** e **Write-back**.
 
-- **Write-through:** cada escrita atualiza a cache e é propagada à memória principal.
-- **Write-back:** as alterações são mantidas inicialmente na cache e escritas na memória principal quando uma linha modificada precisa ser substituída ou no descarregamento final considerado pela simulação.
+A proposta vai além de mostrar como cada política funciona. O simulador executa acessos à memória, contabiliza o tráfego de leitura e escrita, compara cenários com diferentes padrões de localidade e demonstra um problema de coerência entre caches privadas em um sistema multiprocessado (SMP).
 
-Além da comparação entre as políticas, o programa calcula o tráfego de dados, analisa como diferentes padrões de localidade influenciam os resultados e apresenta um exemplo simplificado de incoerência entre caches privadas em um sistema multiprocessado (SMP).
+> **Pergunta central:** qual política gera menos tráfego? A resposta depende da configuração da cache, da estratégia de alocação e do padrão de acesso aos dados.
 
-Projeto acadêmico da disciplina **Arquitetura de Computadores — 2026/2**, da Universidade Federal de Rondônia (UNIR).
+## 📊 Visão rápida
+
+<div align="center">
+
+| **1.000** | **2 KiB** | **2 políticas** | **SMP** |
+|:---:|:---:|:---:|:---:|
+| Acessos simulados | Capacidade da cache | Write-through e Write-back | Demonstração de coerência |
+
+</div>
+
+### Resultado da simulação principal
+
+| Métrica | Write-through | Write-back |
+|---|---:|---:|
+| Acertos (*hits*) | 666 | 663 |
+| Falhas (*misses*) | 334 | 337 |
+| Taxa de acerto | 66,6% | 66,3% |
+| Tráfego de leitura | 7.296 B | 10.784 B |
+| Tráfego de escrita | 1.200 B | 4.928 B |
+| **Tráfego total** | **8.496 B** | **15.712 B** |
+
+**Como interpretar:** nesta configuração, o Write-through apresentou menor tráfego total. Isso não significa que ele seja sempre melhor: as duas políticas foram combinadas com estratégias de alocação diferentes, e os resultados mudam conforme o padrão de acesso.
+
+## 🧭 Navegação
+
+- [Objetivos](#-objetivos)
+- [Configuração da simulação](#️-configuração-da-simulação-principal)
+- [Resultados da configuração principal](#-resultados-da-configuração-principal)
+- [Análise de localidade](#-análise-de-localidade)
+- [Coerência de cache em SMP](#-coerência-de-cache-em-smp)
+- [Estrutura do projeto](#-estrutura-do-projeto)
+- [Como executar](#️-como-executar)
+- [Testes](#-testes)
+- [Limitações do modelo](#️-limitações-do-modelo)
+- [Integrantes](#-integrantes)
+- [Referências](#-referências)
 
 ## 🎯 Objetivos
 
-- Comparar as políticas Write-through e Write-back.
-- Simular **1.000 acessos à memória**, com **700 leituras e 300 escritas**.
+- Comparar as políticas de escrita Write-through e Write-back.
+- Simular **1.000 acessos à memória**, com 700 leituras e 300 escritas.
 - Calcular o tráfego de leitura e escrita em bytes.
 - Observar o efeito de diferentes padrões de localidade.
 - Demonstrar incoerência entre caches privadas e uma estratégia simplificada de invalidação por *bus snooping*.
-- Organizar o código em módulos e executar autotestes.
+- Manter o código organizado em módulos e executar autotestes.
+
+---
 
 ## ⚙️ Configuração da simulação principal
 
@@ -95,7 +140,7 @@ Em seguida, o simulador apresenta uma estratégia simplificada de *bus snooping*
 ## 🗂️ Estrutura do projeto
 
 ```text
-projeto_cache/
+tema5-memoria-cache/
 ├── main.py
 ├── LEIA-ME.txt
 ├── .gitignore
