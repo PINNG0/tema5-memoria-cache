@@ -53,6 +53,7 @@ A proposta vai além de mostrar como cada política funciona. O simulador execut
 - [Configuração da simulação](#️-configuração-da-simulação-principal)
 - [Resultados da configuração principal](#-resultados-da-configuração-principal)
 - [Análise de localidade](#-análise-de-localidade)
+- [Trechos principais da implementação](#-trechos-principais-da-implementação)
 - [Coerência de cache em SMP](#-coerência-de-cache-em-smp)
 - [Estrutura do projeto](#-estrutura-do-projeto)
 - [Como executar](#️-como-executar)
@@ -113,6 +114,94 @@ Resultados da versão final do simulador:
 Nesta configuração, o Write-through gera menos tráfego total. Isso não significa que seja sempre mais eficiente: o Write-through utiliza *no-write-allocate*, enquanto o Write-back utiliza *write-allocate*. Em falhas de escrita, o Write-back pode carregar linhas para a cache, aumentando as leituras contabilizadas.
 
 No Write-back, o cálculo também considera as linhas modificadas que permanecem na cache ao final, como transferências de retorno para a memória principal.
+
+## 💻 Trechos principais da implementação
+
+Esta seção apresenta partes pequenas do código real do projeto para mostrar como as decisões do simulador foram implementadas. Os exemplos foram extraídos de `cache_sim/cache.py` e `cache_sim/coherence.py`; a implementação completa continua disponível nos arquivos do repositório.
+
+### 1. Write-through e Write-back
+
+No método `access()`, o comportamento da escrita depende da política selecionada:
+
+```python
+if self.policy == POLICY_WT:
+    # Write-through grava na memória; no-write-allocate não carrega miss.
+    self.memory[address] = value
+    self.bus_word_writes += 1
+    if hit:
+        line["data"][offset] = value
+else:
+    # Write-back carrega em miss e adia a gravação da linha modificada.
+    if not hit:
+        self._fill(cache_set, tag, block)
+        line = cache_set[tag]
+    line["data"][offset] = value
+    line["dirty"] = True
+```
+
+**O que esse trecho faz:**
+
+- **Write-through (WT):** grava o valor diretamente na memória e contabiliza uma escrita de palavra. Se a linha já estiver na cache, também atualiza a cópia armazenada.
+- **Write-back (WB):** altera o valor na cache e marca a linha como `dirty`. A gravação na memória é adiada até a substituição da linha ou o descarregamento final.
+- Nesta simulação, WT usa `no-write-allocate` e WB usa `write-allocate`; portanto, a comparação considera as duas configurações completas.
+
+### 2. Substituição de linhas usando LRU
+
+Quando um conjunto está cheio, `_fill()` remove a linha menos recentemente usada:
+
+```python
+if len(cache_set) >= ASSOCIATIVITY:
+    _, victim = cache_set.popitem(last=False)
+    if victim["dirty"]:
+        self.bus_line_writes += 1
+        self._write_line_to_memory(victim["block"], victim["data"])
+```
+
+Os conjuntos são armazenados em `OrderedDict`: a linha menos recentemente utilizada fica no início. O `popitem(last=False)` remove essa linha. Se ela estiver modificada (`dirty`), seus dados são escritos de volta na memória antes de ser descartada.
+
+### 3. Contabilização do tráfego em bytes
+
+O método `traffic_bytes()` reúne os bytes transferidos nas leituras e escritas:
+
+```python
+def traffic_bytes(self):
+    """Retorna (bytes de leitura, bytes de escrita), incluindo flush final."""
+    self.flush()
+    read_bytes = self.bus_reads * LINE_BYTES
+    write_bytes = (self.bus_word_writes * WORD_BYTES
+                   + self.bus_line_writes * LINE_BYTES
+                   + self.final_flush_lines * LINE_BYTES)
+    return read_bytes, write_bytes
+```
+
+A contabilização considera:
+
+- **Leitura:** quantidade de linhas trazidas da memória multiplicada pelo tamanho da linha.
+- **Escrita de palavra:** quantidade de palavras gravadas diretamente na memória multiplicada por `WORD_BYTES`.
+- **Write-back:** linhas escritas na memória durante substituições e linhas sujas gravadas no `flush()` final.
+
+O tráfego total exibido no relatório é a soma dos bytes de leitura e de escrita.
+
+### 4. Invalidação simplificada para coerência de cache
+
+Na demonstração SMP, o barramento invalida cópias do endereço que estejam nas caches dos outros núcleos:
+
+```python
+def invalidate_others(self, writer, address):
+    # Invalida cópias dos outros núcleos antes de concluir a escrita.
+    for other in self.cores:
+        if other is writer or address not in other.lines:
+            continue
+        value, dirty = other.lines[address]
+        if dirty:
+            writer.memory.write(address, value)
+        del other.lines[address]
+        print(f"    snoop: {other.name} invalida a cópia de X")
+```
+
+Assim, o núcleo que escreve solicita a invalidação das cópias encontradas nos demais núcleos. Se uma cópia estiver suja, o exemplo transfere seu valor para a memória antes de removê-la. Trata-se de uma **demonstração didática simplificada**, não de uma implementação completa do protocolo MESI.
+
+---
 
 ## 🔎 Análise de localidade
 
